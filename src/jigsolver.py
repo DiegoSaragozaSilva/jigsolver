@@ -1,16 +1,20 @@
 import cv2
 
 from preprocessor import *
+from jigsaw import *
 
 def main():
-    jigsaw = cv2.imread("sample_01.png") 
+    jigsaw_image = cv2.imread("sample_03.png") 
 
-    preprocessor = Preprocessor()
-    processed_jigsaw = preprocessor.process(jigsaw)
+    preprocessor = Preprocessor(debug_mode = True)
+    processed_jigsaw_image = preprocessor.process(jigsaw_image)
 
-    cv2.imshow("Processed Image", processed_jigsaw)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    jigsaw = Jigsaw(jigsaw_image, processed_jigsaw_image)
+    jigsaw.visualize()
+    for piece in jigsaw.pieces:
+        piece.visualize()
+    jigsaw.solve()
+
     return 0
 
 if __name__ == "__main__":
