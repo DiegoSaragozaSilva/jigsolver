@@ -6,7 +6,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { styled } from "@mui/material/styles";
 
 const StyledBox = styled(Box)(({ theme }) => ({
-  width: "50%",
+  width: "80%",
   height: "50%",
   display: "flex",
   flexDirection: "column",
@@ -15,6 +15,7 @@ const StyledBox = styled(Box)(({ theme }) => ({
   border: `2px dashed ${theme.palette.primary.main}`,
   backgroundColor: theme.palette.background.paper,
   color: theme.palette.text.primary,
+  margin: theme.spacing(2),
   cursor: "pointer",
   "&:hover": {
     backgroundColor: theme.palette.action.hover,
@@ -27,12 +28,14 @@ const StyledTypography = styled(Typography)(({ theme }) => ({
   textAlign: "center",
 }));
 
-const DragAndDropUpload: React.FC = () => {
+// Accept only images
+interface DragAndDropUploadProps {
+  onDrop: (acceptedFiles: File[]) => void;
+}
+
+const DragAndDropUpload: React.FC<DragAndDropUploadProps> = ({ onDrop }) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: (acceptedFiles) => {
-      // Handle the files
-      console.log(acceptedFiles);
-    },
+    onDrop,
   });
 
   return (
