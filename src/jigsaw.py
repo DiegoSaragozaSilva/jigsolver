@@ -70,14 +70,11 @@ class Jigsaw:
         plt.imshow(self.processed_image)
         plt.show()
 
-    def visualize_board(self):
-        # Visualize the board with the pieces placed using opencv
-        pass
-
     def solve(self):
         self.board, self.pieces_to_place = self._initialize_board()
         self._place_first_corner()
         self._place_borders()
+        return self.board
 
     def _calculate_jigsaw_dimensions(
         self, border_pieces_amount: int
@@ -133,7 +130,7 @@ class Jigsaw:
 
         if self.debug_mode:
             # Determine the size of the canvas
-            canvas_size = (500, 500, 3)  # Example size, adjust as needed
+            canvas_size = (500, 500, 3)
             canvas = np.zeros(canvas_size, dtype=np.uint8)
 
             # Draw the contours on the canvas
