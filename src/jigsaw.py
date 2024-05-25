@@ -9,12 +9,16 @@ class Jigsaw:
     processed_image = None
     pieces = None
     def __init__(self, original_image, processed_image):
-        self.original_image = original_image
         self.processed_image = processed_image
         self.pieces = []
+
+        # Fit original image shape to the processed one
+        self.original_image = cv2.copyMakeBorder(original_image, 5, 5, 5, 5, cv2.BORDER_CONSTANT, value = [255, 255, 255])
+        self.original_image = cv2.resize(original_image, (1280, 720))
         
         contours, hierarchy = cv2.findContours(processed_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
+            # Piece processed image
             contour_bb = cv2.boundingRect(contour)
             piece_mask = processed_image[contour_bb[1]:contour_bb[1] + contour_bb[3], contour_bb[0]:contour_bb[0] + contour_bb[2]]
             image_mask = np.zeros_like(processed_image)
@@ -28,7 +32,14 @@ class Jigsaw:
             final_piece_image = np.zeros(piece_image.shape, dtype = np.uint8)
             cv2.drawContours(final_piece_image, [piece_contour], -1, 255, -1)
 
-            piece = Piece(final_piece_image, piece_contour)
+            # Piece original image
+            piece_mask = self.original_image[contour_bb[1]:contour_bb[1] + contour_bb[3], contour_bb[0]:contour_bb[0] + contour_bb[2]]
+            image_mask = np.zeros_like(self.original_image)
+            image_mask[contour_bb[1]:contour_bb[1] + contour_bb[3], contour_bb[0]:contour_bb[0] + contour_bb[2]] = piece_mask
+            original_piece_image = image_mask[contour_bb[1]:contour_bb[1] + contour_bb[3], contour_bb[0]:contour_bb[0] + contour_bb[2]]
+            original_piece_image = cv2.copyMakeBorder(original_piece_image, 25, 25, 25, 25, cv2.BORDER_CONSTANT, value = [0, 0, 0])
+
+            piece = Piece(final_piece_image, original_piece_image, piece_contour)
             self.pieces.append(piece)
 
         for piece in self.pieces:

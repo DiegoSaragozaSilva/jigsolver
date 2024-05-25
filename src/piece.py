@@ -13,15 +13,17 @@ PIECE_TYPE_CORNER = 1
 PIECE_TYPE_CENTER = 2
 
 class Piece:
-    image   = None
-    contour = None
-    corners = None
-    center  = None
-    sides   = None
-    type    = None
+    image           = None
+    original_image  = None
+    contour         = None
+    corners         = None
+    center          = None
+    sides           = None
+    type            = None
 
-    def __init__(self, image, contour):
+    def __init__(self, image, original_image, contour):
         self.image = image
+        self.original_image = original_image
         self.contour = contour
         self.sides = []
 
@@ -235,7 +237,8 @@ class Piece:
         # plt.show() 
 
     def visualize(self):
-        cv2.imshow("Jigsaw Piece", self.image)
+        stack_image = np.vstack((cv2.cvtColor(self.image, cv2.COLOR_GRAY2BGR), self.original_image))
+        cv2.imshow("Jigsaw Piece", stack_image)
         while(True):
             key = cv2.waitKey(33)
             if key == 27:
