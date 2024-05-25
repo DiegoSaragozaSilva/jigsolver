@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 
 SIDE_TYPE_HEAD = 0
 SIDE_TYPE_HOLE = 1
@@ -14,5 +15,4 @@ class Side:
         self.length = cv2.arcLength(points, False)
         self.type = type
 
-        M = cv2.moments(self.points)
-        self.center = [int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"])]
+        self.center = [np.average(self.points, axis = 0), np.average(self.points, axis = 1)] 

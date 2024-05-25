@@ -77,6 +77,7 @@ class Piece:
                     points[1][0] * points[2][1] - points[1][1] * points[2][0] + 
                     points[2][0] * points[3][1] - points[2][1] * points[3][0]) / 2.0
 
+
         image_harris = cv2.cornerHarris(self.image, 4, 3, 0.005)
 
         image_corners = image_harris.copy()
@@ -96,56 +97,58 @@ class Piece:
 
         candidates = []
         delta_distances = []
-        distance_threshold = 200
+        distance_threshold = 50
         for combination in combinations(points, 4):
             if not polygon_distance_threshold(combination, distance_threshold):
                 continue
            
-            center_of_mass = [(combination[0][0] + combination[1][0] + combination[2][0] + combination[3][0]) / 4,
-                              (combination[0][1] + combination[1][1] + combination[2][1] + combination[3][1]) / 4]
+            # center_of_mass = [(combination[0][0] + combination[1][0] + combination[2][0] + combination[3][0]) / 4,
+            #                   (combination[0][1] + combination[1][1] + combination[2][1] + combination[3][1]) / 4]
 
-            ac_distance = point_distance(combination[0], center_of_mass)
-            bc_distance = point_distance(combination[1], center_of_mass)
-            cc_distance = point_distance(combination[2], center_of_mass)
-            dc_distance = point_distance(combination[3], center_of_mass)
-            delta = abs((ac_distance + cc_distance) - (bc_distance + dc_distance))
-            candidates.append(combination)
-            delta_distances.append(delta)
-           # slope_ab = (combination[1][1] - combination[0][1]) / (combination[1][0] - combination[0][0])
-           # slope_cd = (combination[3][1] - combination[2][1]) / (combination[3][0] - combination[2][0])
-           # if np.isclose(slope_ab, slope_cd, atol = 0.3):
-           #     candidates.append(combination)
+            # ac_distance = point_distance(combination[0], center_of_mass)
+            # bc_distance = point_distance(combination[1], center_of_mass)
+            # cc_distance = point_distance(combination[2], center_of_mass)
+            # dc_distance = point_distance(combination[3], center_of_mass)
+            # delta = abs((ac_distance + cc_distance) - (bc_distance + dc_distance))
+            # candidates.append(combination)
+            # delta_distances.append(delta)
+            slope_ab = (combination[1][1] - combination[0][1]) / (combination[1][0] - combination[0][0])
+            slope_cd = (combination[3][1] - combination[2][1]) / (combination[3][0] - combination[2][0])
+            slope_ac = (combination[2][1] - combination[0][1]) / (combination[2][0] - combination[0][0])
+            slope_bd = (combination[3][1] - combination[1][1]) / (combination[3][0] - combination[1][0])
+            delta_slope = abs((slope_ab + slope_cd) - (slope_ac + slope_bd))
+            if np.isclose(delta_slope, 0, atol = 0.3):
+                candidates.append(combination)
 
-        # figure = plt.figure(figsize = (12, 4))
-        # figure.add_subplot(3, 3, 1)
-        # plt.imshow(self.image)
-        # figure.add_subplot(3, 3, 2)
-        # plt.imshow(image_harris)
-        # figure.add_subplot(3, 3, 3)
-        # plt.imshow(corners_maxima)
-        # figure.add_subplot(3, 3, 4)
-        # plt.imshow(self.image)
-        # plt.scatter(points_x, points_y)
+        figure = plt.figure(figsize = (12, 4))
+        figure.add_subplot(3, 3, 1)
+        plt.imshow(self.image)
+        figure.add_subplot(3, 3, 2)
+        plt.imshow(image_harris)
+        figure.add_subplot(3, 3, 3)
+        plt.imshow(corners_maxima)
+        figure.add_subplot(3, 3, 4)
+        plt.imshow(self.image)
+        plt.scatter(points_x, points_y)
 
-        corners = []
         print(f"Found candidates {len(candidates)}")
         if len(candidates) <= 0:
             return 0
 
-        # sorted_candidates = sorted(candidates, key = polygon_area)
-        # best_candidate = list(sorted_candidates[-1])
-        best_candidate_index = np.argmin(delta_distances)
-        best_candidate = candidates[best_candidate_index]
+        sorted_candidates = sorted(candidates, key = polygon_area)
+        best_candidate = list(sorted_candidates[0])
+        # best_candidate_index = np.argmin(delta_distances)
+        # best_candidate = candidates[best_candidate_index]
 
         best_xs = [point[0] for point in best_candidate]
         best_ys = [point[1] for point in best_candidate]
 
-        # figure.add_subplot(3, 3, 5)
-        # plt.imshow(self.image)
-        # plt.scatter(best_xs, best_ys)
+        figure.add_subplot(3, 3, 5)
+        plt.imshow(self.image)
+        plt.scatter(best_xs, best_ys)
 
         # Refine detected corners
-        refinement_size = 60
+        refinement_size = 20
         refined_corners = []
         for point in best_candidate:
             farthest_distance = 0
@@ -166,10 +169,10 @@ class Piece:
 
         refined_xs = [point[0] for point in refined_corners]
         refined_ys = [point[1] for point in refined_corners]
-        
-        # figure.add_subplot(3, 3, 6)
-        # plt.imshow(self.image)
-        # plt.scatter(refined_xs, refined_ys)
+
+        figure.add_subplot(3, 3, 6)
+        plt.imshow(self.image)
+        plt.scatter(refined_xs, refined_ys)
         
         # Separate the four sides of the piece
         side_lines = [[self.corners[0], self.corners[1]],
@@ -205,6 +208,9 @@ class Piece:
         num_flats = 0
         patch_size = 5
         for side in side_points:
+            if len(side) == 0:
+                continue
+
             average_point = np.array(side).mean(axis = 0)
             average_point = [int(x) for x in average_point]
             average_point_patch = self.image[average_point[1] - patch_size:average_point[1] + patch_size, average_point[0] - patch_size:average_point[0] + patch_size]
@@ -224,8 +230,8 @@ class Piece:
                 print(f"FLAT (B) {non_zero}")
                 cv2.circle(image_lines, average_point, 3, (0, 0, 255), -1)
 
-        # figure.add_subplot(3, 3, 7)
-        # plt.imshow(image_lines)
+        figure.add_subplot(3, 3, 7)
+        plt.imshow(image_lines)
 
         if num_flats == 2:
             self.type = PIECE_TYPE_CORNER
@@ -234,7 +240,7 @@ class Piece:
         else:
             self.type = PIECE_TYPE_CENTER
 
-        # plt.show() 
+        plt.show() 
 
     def visualize(self):
         stack_image = np.vstack((cv2.cvtColor(self.image, cv2.COLOR_GRAY2BGR), self.original_image))
