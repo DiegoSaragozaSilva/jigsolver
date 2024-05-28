@@ -6,10 +6,13 @@ from utils import SideType, SidePosition
 
 class Side:
 
-    def __init__(self, points: np.ndarray, type: SideType):
+    def __init__(
+        self, points: np.ndarray, type: SideType, side_image_trimmed: np.ndarray
+    ):
         self.points = points
         self.length = cv2.arcLength(points, False)
         self.type = type
+        self.side_image_trimmed = side_image_trimmed
 
         self.center = [np.average(self.points, axis=0), np.average(self.points, axis=1)]
 

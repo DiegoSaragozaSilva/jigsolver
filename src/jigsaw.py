@@ -3,6 +3,8 @@ import numpy as np
 import imutils
 
 from matplotlib import pyplot as plt
+from skimage.metrics import structural_similarity
+
 
 from side import Side
 from piece import Piece
@@ -138,26 +140,50 @@ class Jigsaw:
 
         return board, pieces_to_place
 
-    def _get_matching_coefficient(
-        self, side_points_1: np.ndarray, side_points_2: np.ndarray
-    ) -> float:
+    def _get_matching_coefficient(self, side_1: Side, side_2: Side) -> float:
         # Ensure the points are in the correct shape for OpenCV
-        contour1 = side_points_1.reshape((-1, 1, 2)).astype(np.int32)
-        contour2 = side_points_2.reshape((-1, 1, 2)).astype(np.int32)
+        contour1 = side_1.points.reshape((-1, 1, 2)).astype(np.int32)
+        contour2 = side_2.points.reshape((-1, 1, 2)).astype(np.int32)
 
         # Calculate the match shape value using cv2.matchShapes
-        matching_coefficient = cv2.matchShapes(
+        """ matching_coefficient = cv2.matchShapes(
             contour1, contour2, cv2.CONTOURS_MATCH_I1, 0.0
+        ) """
+        side_image_trimmed_1 = cv2.cvtColor(
+            side_1.side_image_trimmed, cv2.COLOR_BGR2GRAY
+        )
+        side_image_trimmed_2 = cv2.cvtColor(
+            side_2.side_image_trimmed, cv2.COLOR_BGR2GRAY
+        )
+
+        # resize image 2 to the size of image 1
+        side_image_trimmed_2 = cv2.resize(
+            side_image_trimmed_2, side_image_trimmed_1.shape[::-1]
+        )
+
+        #
+        matching_coefficient = 1 - structural_similarity(
+            side_image_trimmed_1, side_image_trimmed_2, gradient=False
         )
 
         if self.debug_mode:
             # Determine the size of the canvas
-            canvas_size = (500, 500, 3)
+            canvas_size = (500, 500)
             canvas = np.zeros(canvas_size, dtype=np.uint8)
 
+            # Show the images compared in cavas
+            canvas[: side_image_trimmed_1.shape[0], : side_image_trimmed_1.shape[1]] = (
+                side_image_trimmed_1
+            )
+            canvas[
+                : side_image_trimmed_2.shape[0],
+                side_image_trimmed_1.shape[1] : side_image_trimmed_1.shape[1]
+                + side_image_trimmed_2.shape[1],
+            ] = side_image_trimmed_2
+
             # Draw the contours on the canvas
-            cv2.drawContours(canvas, [contour1], -1, (255, 0, 0), 2)  # Blue contour
-            cv2.drawContours(canvas, [contour2], -1, (0, 255, 0), 2)  # Green contour
+            # cv2.drawContours(canvas, [contour1], -1, (255, 0, 0), 2)  # Blue contour
+            # cv2.drawContours(canvas, [contour2], -1, (0, 255, 0), 2)  # Green contour
 
             # Add the matching coefficient value to the canvas
             text_position = (10, 30)  # Position of the text on the canvas
@@ -288,7 +314,7 @@ class Jigsaw:
                     and i != oposite_flat_side_index
                 ):
                     coefficient = self._get_matching_coefficient(
-                        side_points_1=current_side.points, side_points_2=side.points
+                        side_1=current_side, side_2=side
                     )
                     if coefficient < best_coefficient:
                         best_match = piece
@@ -370,7 +396,7 @@ class Jigsaw:
             for i, side in enumerate(piece.sides):
                 if side.type == next_side_type and side.can_attach_piece:
                     coefficient = self._get_matching_coefficient(
-                        side_points_1=current_side.points, side_points_2=side.points
+                        side_1=current_side, side_2=side
                     )
                     if coefficient < best_coefficient:
                         best_match = piece

@@ -23,8 +23,6 @@ def main():
     board_viewer = JigsawPuzzleBoardViewer(solved_jigsaw)
     board_viewer.display_board()
 
-    pass
-
     return 0
 
 

@@ -17,7 +17,7 @@ class Piece:
         self.image = image
         self.original_image = original_image
         self.contour = contour
-        self.sides = []
+        self.sides: list[Side] = []
 
         M = cv2.moments(self.contour)
         self.center = [int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"])]
@@ -80,7 +80,7 @@ class Piece:
 
         candidates = []
         delta_distances = []
-        distance_threshold = 150
+        distance_threshold = 200
         for combination in combinations(points, 4):
             if not polygon_distance_threshold(combination, distance_threshold):
                 continue
@@ -229,16 +229,23 @@ class Piece:
             ]
 
             non_zero = cv2.countNonZero(average_point_patch)
+            points = np.array(side)
+            bounding_box = cv2.boundingRect(points)
+            side_image_trimmed = self.original_image[
+                bounding_box[1] : bounding_box[1] + bounding_box[3],
+                bounding_box[0] : bounding_box[0] + bounding_box[2],
+            ]
+
             if non_zero == 2 * patch_size * 2 * patch_size:
-                self.sides.append(Side(np.array(side), SideType.HEAD))
+                self.sides.append(Side(points, SideType.HEAD, side_image_trimmed))
                 print(f"HEAD (R) {non_zero}")
                 cv2.circle(image_lines, average_point, 3, (255, 0, 0), -1)
             elif non_zero == 0:
-                self.sides.append(Side(np.array(side), SideType.HOLE))
+                self.sides.append(Side(points, SideType.HOLE, side_image_trimmed))
                 print(f"HOLE (G) {non_zero}")
                 cv2.circle(image_lines, average_point, 3, (0, 255, 0), -1)
             else:
-                self.sides.append(Side(np.array(side), SideType.FLAT))
+                self.sides.append(Side(points, SideType.FLAT, side_image_trimmed))
                 num_flats += 1
                 print(f"FLAT (B) {non_zero}")
                 cv2.circle(image_lines, average_point, 3, (0, 0, 255), -1)
