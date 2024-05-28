@@ -116,25 +116,39 @@ class Piece:
 
         candidates = []
         delta_distances = []
-        distance_threshold = 200
+        distance_threshold = 150
         for combination in combinations(points, 4):
             if not polygon_distance_threshold(combination, distance_threshold):
                 continue
 
             combination = list(sorted(combination, key=clockwise_distance))
 
-            # center_of_mass = [(combination[0][0] + combination[1][0] + combination[2][0] + combination[3][0]) / 4,
-            #                   (combination[0][1] + combination[1][1] + combination[2][1] + combination[3][1]) / 4]
+            center_of_mass = [
+                (
+                    combination[0][0]
+                    + combination[1][0]
+                    + combination[2][0]
+                    + combination[3][0]
+                )
+                / 4,
+                (
+                    combination[0][1]
+                    + combination[1][1]
+                    + combination[2][1]
+                    + combination[3][1]
+                )
+                / 4,
+            ]
 
-            # ac_distance = point_distance(combination[0], center_of_mass)
-            # bc_distance = point_distance(combination[1], center_of_mass)
-            # cc_distance = point_distance(combination[2], center_of_mass)
-            # dc_distance = point_distance(combination[3], center_of_mass)
-            # delta = abs((ac_distance + cc_distance) - (bc_distance + dc_distance))
-            # candidates.append(combination)
-            # delta_distances.append(delta)
+            ac_distance = point_distance(combination[0], center_of_mass)
+            bc_distance = point_distance(combination[1], center_of_mass)
+            cc_distance = point_distance(combination[2], center_of_mass)
+            dc_distance = point_distance(combination[3], center_of_mass)
+            delta = abs((ac_distance + cc_distance) - (bc_distance + dc_distance))
+            candidates.append(combination)
+            delta_distances.append(delta)
 
-            def _change_inf(x):
+            """ def _change_inf(x):
                 if isinf(x):
                     return 0
                 return x
@@ -157,7 +171,7 @@ class Piece:
             )
             delta_slope = abs((slope_ab + slope_cd) - (slope_ac + slope_bd))
             if np.isclose(delta_slope, 0, atol=5):
-                candidates.append(combination)
+                candidates.append(combination) """
 
         figure = plt.figure(figsize=(12, 4))
         figure.add_subplot(3, 3, 1)
@@ -174,10 +188,10 @@ class Piece:
         if len(candidates) <= 0:
             return 0
 
-        sorted_candidates = sorted(candidates, key=polygon_area)
-        best_candidate = list(sorted_candidates[0])
-        # best_candidate_index = np.argmin(delta_distances)
-        # best_candidate = candidates[best_candidate_index]
+        # sorted_candidates = sorted(candidates, key=polygon_area)
+        # best_candidate = list(sorted_candidates[0])
+        best_candidate_index = np.argmin(delta_distances)
+        best_candidate = candidates[best_candidate_index]
 
         best_xs = [point[0] for point in best_candidate]
         best_ys = [point[1] for point in best_candidate]
