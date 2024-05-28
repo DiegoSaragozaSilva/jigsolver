@@ -4,9 +4,9 @@ from preprocessor import *
 from jigsaw import *
 
 def main():
-    jigsaw_image = cv2.imread("sample_01.png") 
+    jigsaw_image = cv2.imread("jigsaw-samples/sample_4.png") 
 
-    preprocessor = Preprocessor(debug_mode = False)
+    preprocessor = Preprocessor(debug_mode = True)
     processed_jigsaw_image = preprocessor.process(jigsaw_image)
 
     jigsaw = Jigsaw(jigsaw_image, processed_jigsaw_image)

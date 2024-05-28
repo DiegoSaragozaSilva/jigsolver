@@ -3,6 +3,8 @@ import random
 import numpy as np
 import scipy.ndimage as ndimage
 import scipy.ndimage.filters as filters
+
+from math import isinf
 from itertools import combinations
 from matplotlib import pyplot as plt
 
@@ -12,14 +14,15 @@ PIECE_TYPE_BORDER = 0
 PIECE_TYPE_CORNER = 1
 PIECE_TYPE_CENTER = 2
 
+
 class Piece:
-    image           = None
-    original_image  = None
-    contour         = None
-    corners         = None
-    center          = None
-    sides           = None
-    type            = None
+    image = None
+    original_image = None
+    contour = None
+    corners = None
+    center = None
+    sides = None
+    type = None
 
     def __init__(self, image, original_image, contour):
         self.image = image
@@ -49,16 +52,26 @@ class Piece:
             return angle, vector_length
 
         def point_distance(a, b):
-            return np.sqrt((b[0] - a[0])**2 + (b[1] - a[1])**2)
+            return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
 
         def point_line_distance(p, line):
-            return abs((line[1][0] - line[0][0]) * (p[1] - line[0][1]) - (p[0] - line[0][0]) * (line[1][1] - line[0][1])) / np.sqrt((line[1][0] - line[0][0])**2 + (line[1][1] - line[0][1])**2)
+            return abs(
+                (line[1][0] - line[0][0]) * (p[1] - line[0][1])
+                - (p[0] - line[0][0]) * (line[1][1] - line[0][1])
+            ) / np.sqrt((line[1][0] - line[0][0]) ** 2 + (line[1][1] - line[0][1]) ** 2)
 
         def point_line_side(p, line):
-            return np.sign(np.cross([line[1][0] - line[0][0], line[1][1] - line[0][1], 0], [p[0] - line[0][0], p[1] - line[0][1], 0])[2])
+            return np.sign(
+                np.cross(
+                    [line[1][0] - line[0][0], line[1][1] - line[0][1], 0],
+                    [p[0] - line[0][0], p[1] - line[0][1], 0],
+                )[2]
+            )
 
         def point_inside_window(point, window):
-            return (point[0] >= window[0][0] and point[0] <= window[1][0]) and (point[1] <= window[0][1] and point[1] >= window[1][1]) 
+            return (point[0] >= window[0][0] and point[0] <= window[1][0]) and (
+                point[1] <= window[0][1] and point[1] >= window[1][1]
+            )
 
         def polygon_distance_threshold(polygon, threshold):
             for combination in combinations(polygon, 2):
@@ -73,35 +86,43 @@ class Piece:
             return distances
 
         def polygon_area(points):
-            return (points[0][0] * points[1][1] - points[0][1] * points[1][0] + 
-                    points[1][0] * points[2][1] - points[1][1] * points[2][0] + 
-                    points[2][0] * points[3][1] - points[2][1] * points[3][0]) / 2.0
+            return (
+                points[0][0] * points[1][1]
+                - points[0][1] * points[1][0]
+                + points[1][0] * points[2][1]
+                - points[1][1] * points[2][0]
+                + points[2][0] * points[3][1]
+                - points[2][1] * points[3][0]
+            ) / 2.0
 
-
-        image_harris = cv2.cornerHarris(self.image, 4, 3, 0.005)
+        image_harris = cv2.cornerHarris(self.image, 8, 3, 0.005)
 
         image_corners = image_harris.copy()
         image_corners[image_corners < 0.3 * image_harris.max()] = 0.0
         corners_max = filters.maximum_filter(image_corners, 3)
-        corners_maxima = (image_corners == corners_max)
+        corners_maxima = image_corners == corners_max
         corners_min = filters.minimum_filter(image_corners, 3)
-        corners_diff = ((corners_max - corners_min) > 0.0)
+        corners_diff = (corners_max - corners_min) > 0.0
         corners_maxima[corners_diff == 0] = 0.0
 
         labeled, num_objects = ndimage.label(corners_maxima)
         slices = ndimage.find_objects(labeled)
-        points = np.array(ndimage.center_of_mass(image_corners, labeled, range(1, num_objects + 1)))
+        points = np.array(
+            ndimage.center_of_mass(image_corners, labeled, range(1, num_objects + 1))
+        )
         points = [list(reversed(point)) for point in points]
         points_x = [point[0] for point in points]
         points_y = [point[1] for point in points]
 
         candidates = []
         delta_distances = []
-        distance_threshold = 50
+        distance_threshold = 200
         for combination in combinations(points, 4):
             if not polygon_distance_threshold(combination, distance_threshold):
                 continue
-           
+
+            combination = list(sorted(combination, key=clockwise_distance))
+
             # center_of_mass = [(combination[0][0] + combination[1][0] + combination[2][0] + combination[3][0]) / 4,
             #                   (combination[0][1] + combination[1][1] + combination[2][1] + combination[3][1]) / 4]
 
@@ -112,15 +133,33 @@ class Piece:
             # delta = abs((ac_distance + cc_distance) - (bc_distance + dc_distance))
             # candidates.append(combination)
             # delta_distances.append(delta)
-            slope_ab = (combination[1][1] - combination[0][1]) / (combination[1][0] - combination[0][0])
-            slope_cd = (combination[3][1] - combination[2][1]) / (combination[3][0] - combination[2][0])
-            slope_ac = (combination[2][1] - combination[0][1]) / (combination[2][0] - combination[0][0])
-            slope_bd = (combination[3][1] - combination[1][1]) / (combination[3][0] - combination[1][0])
+
+            def _change_inf(x):
+                if isinf(x):
+                    return 0
+                return x
+
+            slope_ab = (combination[1][1] - combination[0][1]) / (
+                combination[1][0] - combination[0][0]
+            )
+            slope_ab = _change_inf(slope_ab)
+
+            slope_cd = (combination[3][1] - combination[2][1]) / (
+                combination[3][0] - combination[2][0]
+            )
+            slope_cd = _change_inf(slope_cd)
+
+            slope_ac = (combination[2][1] - combination[1][1]) / (
+                combination[2][0] - combination[1][0]
+            )
+            slope_bd = (combination[3][1] - combination[0][1]) / (
+                combination[3][0] - combination[0][0]
+            )
             delta_slope = abs((slope_ab + slope_cd) - (slope_ac + slope_bd))
-            if np.isclose(delta_slope, 0, atol = 0.3):
+            if np.isclose(delta_slope, 0, atol=5):
                 candidates.append(combination)
 
-        figure = plt.figure(figsize = (12, 4))
+        figure = plt.figure(figsize=(12, 4))
         figure.add_subplot(3, 3, 1)
         plt.imshow(self.image)
         figure.add_subplot(3, 3, 2)
@@ -135,7 +174,7 @@ class Piece:
         if len(candidates) <= 0:
             return 0
 
-        sorted_candidates = sorted(candidates, key = polygon_area)
+        sorted_candidates = sorted(candidates, key=polygon_area)
         best_candidate = list(sorted_candidates[0])
         # best_candidate_index = np.argmin(delta_distances)
         # best_candidate = candidates[best_candidate_index]
@@ -153,7 +192,10 @@ class Piece:
         for point in best_candidate:
             farthest_distance = 0
             farthest_point = [0, 0]
-            point_window = [[point[0] - refinement_size, point[1] + refinement_size], [point[0] + refinement_size, point[1] - refinement_size]]
+            point_window = [
+                [point[0] - refinement_size, point[1] + refinement_size],
+                [point[0] + refinement_size, point[1] - refinement_size],
+            ]
             for i in range(len(self.contour)):
                 contour_point = self.contour[i][0]
                 if point_inside_window(contour_point, point_window):
@@ -164,7 +206,7 @@ class Piece:
             refined_corners.append(farthest_point)
 
         # Sort corner points
-        refined_corners = list(sorted(refined_corners, key = clockwise_distance))
+        refined_corners = list(sorted(refined_corners, key=clockwise_distance))
         self.corners = refined_corners
 
         refined_xs = [point[0] for point in refined_corners]
@@ -173,12 +215,14 @@ class Piece:
         figure.add_subplot(3, 3, 6)
         plt.imshow(self.image)
         plt.scatter(refined_xs, refined_ys)
-        
+
         # Separate the four sides of the piece
-        side_lines = [[self.corners[0], self.corners[1]],
-                      [self.corners[1], self.corners[2]],
-                      [self.corners[2], self.corners[3]],
-                      [self.corners[3], self.corners[0]]]
+        side_lines = [
+            [self.corners[0], self.corners[1]],
+            [self.corners[1], self.corners[2]],
+            [self.corners[2], self.corners[3]],
+            [self.corners[3], self.corners[0]],
+        ]
 
         distance_threshold = 100
         unclassified_points = []
@@ -190,7 +234,10 @@ class Piece:
             for j in range(len(side_lines)):
                 side_line = side_lines[j]
                 side_distance = point_line_distance(contour_point, side_line)
-                if side_distance < distance_threshold and side_distance < closest_distance:
+                if (
+                    side_distance < distance_threshold
+                    and side_distance < closest_distance
+                ):
                     closest_side = j
                     closest_distance = side_distance
             if closest_side > -1:
@@ -201,8 +248,18 @@ class Piece:
         image_lines = self.image.copy()
         image_lines = cv2.cvtColor(image_lines, cv2.COLOR_GRAY2BGR)
         for side in side_points:
-            random_color = [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)]
-            cv2.polylines(image_lines, np.int32([side]), isClosed = False, color = random_color, thickness = 3)
+            random_color = [
+                random.randint(0, 255),
+                random.randint(0, 255),
+                random.randint(0, 255),
+            ]
+            cv2.polylines(
+                image_lines,
+                np.int32([side]),
+                isClosed=False,
+                color=random_color,
+                thickness=3,
+            )
         cv2.circle(image_lines, self.center, 3, (255, 0, 0), -1)
 
         num_flats = 0
@@ -211,9 +268,12 @@ class Piece:
             if len(side) == 0:
                 continue
 
-            average_point = np.array(side).mean(axis = 0)
+            average_point = np.array(side).mean(axis=0)
             average_point = [int(x) for x in average_point]
-            average_point_patch = self.image[average_point[1] - patch_size:average_point[1] + patch_size, average_point[0] - patch_size:average_point[0] + patch_size]
+            average_point_patch = self.image[
+                average_point[1] - patch_size : average_point[1] + patch_size,
+                average_point[0] - patch_size : average_point[0] + patch_size,
+            ]
 
             non_zero = cv2.countNonZero(average_point_patch)
             if non_zero == 2 * patch_size * 2 * patch_size:
@@ -240,12 +300,14 @@ class Piece:
         else:
             self.type = PIECE_TYPE_CENTER
 
-        plt.show() 
+        plt.show()
 
     def visualize(self):
-        stack_image = np.vstack((cv2.cvtColor(self.image, cv2.COLOR_GRAY2BGR), self.original_image))
+        stack_image = np.vstack(
+            (cv2.cvtColor(self.image, cv2.COLOR_GRAY2BGR), self.original_image)
+        )
         cv2.imshow("Jigsaw Piece", stack_image)
-        while(True):
+        while True:
             key = cv2.waitKey(33)
             if key == 27:
                 break
