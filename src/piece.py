@@ -17,7 +17,7 @@ class Piece:
         self.image = image
         self.original_image = original_image
         self.contour = contour
-        self.sides: list[Side] = []
+        self.sides = []
 
         M = cv2.moments(self.contour)
         self.center = [int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"])]
@@ -276,7 +276,6 @@ class Piece:
             self.type = PieceType.BORDER
         else:
             self.type = PieceType.CENTER
-
         plt.show()
 
     def visualize(self):
