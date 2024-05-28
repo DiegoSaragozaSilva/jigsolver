@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
+import imutils
 
 
 class Preprocessor:
@@ -13,7 +14,8 @@ class Preprocessor:
         image = cv2.copyMakeBorder(
             image, 5, 5, 5, 5, cv2.BORDER_CONSTANT, value=[255, 255, 255]
         )
-        image = cv2.resize(image, (1280, 720))
+        image = imutils.resize(image, width=1280)
+        # image = cv2.resize(image, (1280, 720))
         image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         image_blur = cv2.bilateralFilter(image_gray, 11, 200, 200)
         image_threshold = cv2.adaptiveThreshold(

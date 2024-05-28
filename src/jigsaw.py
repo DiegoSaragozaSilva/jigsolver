@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+import imutils
+
 from matplotlib import pyplot as plt
 
 from side import Side
@@ -17,9 +19,10 @@ class Jigsaw:
         self.original_image = cv2.copyMakeBorder(
             original_image, 5, 5, 5, 5, cv2.BORDER_CONSTANT, value=[255, 255, 255]
         )
-        self.original_image = cv2.resize(original_image, (1280, 720))
+        # self.original_image = cv2.resize(original_image, (1280, 720))
+        self.original_image = imutils.resize(self.original_image, width=1280)
 
-        contours, _ = cv2.findContours(
+        contours, hierarchy = cv2.findContours(
             processed_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
         )
         for contour in contours:
