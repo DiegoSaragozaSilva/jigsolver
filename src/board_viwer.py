@@ -20,7 +20,7 @@ class JigsawPuzzleBoardViewer:
             sum(piece.original_image.shape[1] for piece in row) for row in self.board
         )
         # Initialize the canvas with 3 channels for a color image
-        self.canvas = np.zeros((total_height, total_width, 3), dtype=np.uint8)
+        self.canvas = np.zeros((total_height + 25, total_width + 25, 3), dtype=np.uint8)
 
     def display_board(self):
         current_y = 0
