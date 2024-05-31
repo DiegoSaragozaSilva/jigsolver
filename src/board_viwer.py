@@ -2,41 +2,55 @@ import cv2
 import numpy as np
 
 from piece import Piece
-from math import atan2, pi
+from math import atan2, degrees
 from utils import SidePosition
 
 
 class JigsawPuzzleBoardViewer:
-    def __init__(self, board: list[list[Piece]]):
+    def __init__(self, board: list[list[Piece]], debug_mode=False):
         self.board = board
+        self.debug_mode = debug_mode
         self.calculate_canvas_size()
 
     def calculate_canvas_size(self):
-        # Determine the total canvas size based on maximum row height and total column width
         total_height = sum(
             max(piece.original_image.shape[0] for piece in row) for row in self.board
         )
         total_width = max(
             sum(piece.original_image.shape[1] for piece in row) for row in self.board
         )
-        # Initialize the canvas with 3 channels for a color image
         self.canvas = np.zeros((total_height + 25, total_width + 25, 3), dtype=np.uint8)
 
     def display_board(self):
         current_y = 0
         for index, row in enumerate(self.board):
-            # Reverse the order of pieces in every second row
-            # if index % 2 == 1:  # Assuming rows are 0-indexed
-            #     row = list(reversed(row))
-
             max_row_height = max(piece.original_image.shape[0] for piece in row)
             current_x = 0
             for piece in row:
-                # cv2.imshow("Piece", piece.original_image)
-                # cv2.waitKey(0)
                 rotated_image = self.rotate_piece_to_top(piece)
-                # cv2.imshow("Rotated Piece", rotated_image)
-                # cv2.waitKey(0)
+                # Show the piece original and rotated, drawing the top side center point
+                top_side = next(
+                    side for side in piece.sides if side.position == SidePosition.TOP
+                )
+                top_side_contours = top_side.points
+
+                if self.debug_mode:
+
+                    # Draw the top side contours
+                    cv2.drawContours(
+                        piece.original_image,
+                        [top_side_contours],
+                        -1,
+                        (0, 255, 0),
+                        2,
+                    )
+                    cv2.imshow("Piece Original", piece.original_image)
+
+                    cv2.imshow("Piece Rotated", rotated_image)
+
+                    # Wait for esc key to close the windows
+                    if cv2.waitKey(0) == 27:
+                        cv2.destroyAllWindows()
 
                 self.canvas[
                     current_y : current_y + rotated_image.shape[0],
@@ -50,27 +64,28 @@ class JigsawPuzzleBoardViewer:
         cv2.destroyAllWindows()
 
     def rotate_piece_to_top(self, piece):
-        # Find the center of the top side and the piece's center
         top_side_center = next(
             side.center for side in piece.sides if side.position == SidePosition.TOP
         )[0]
+
         piece_center = piece.center
 
-        # Calculate the vector from piece center to top side center
         dx = top_side_center[0] - piece_center[0]
         dy = top_side_center[1] - piece_center[1]
 
-        # Calculate the angle in radians
         angle = atan2(-dy, dx)
-        target_angle = pi / 2  # 90 degrees, target angle for the top
+        rotation_degrees = degrees(angle) - 90
 
-        # Determine number of 90-degree rotations needed
-        rotations_needed = int(round((target_angle - angle) / (pi / 2))) % 4
+        rotated_image = self.rotate_image(piece.original_image, -rotation_degrees)
+        return rotated_image
 
-        image = piece.original_image
-        for _ in range(rotations_needed):
-            image = self.rotate_image_90_clockwise(image)
-        return image
-
-    def rotate_image_90_clockwise(self, image):
-        return cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+    def rotate_image(self, image, angle):
+        # Get the image dimensions
+        (h, w) = image.shape[:2]
+        # Calculate the center of the image
+        center = (w / 2, h / 2)
+        # Get the rotation matrix
+        M = cv2.getRotationMatrix2D(center, angle, 1.0)
+        # Perform the rotation
+        rotated = cv2.warpAffine(image, M, (w, h))
+        return rotated

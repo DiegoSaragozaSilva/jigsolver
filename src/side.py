@@ -7,7 +7,11 @@ from utils import SideType, SidePosition
 class Side:
 
     def __init__(
-        self, points: np.ndarray, type: SideType, side_image_trimmed: np.ndarray
+        self,
+        points: np.ndarray,
+        type: SideType,
+        side_image_trimmed: np.ndarray,
+        position: SidePosition,
     ):
         self.points = points
         self.length = cv2.arcLength(points, False)
@@ -17,7 +21,7 @@ class Side:
         self.center = [np.average(self.points, axis=0), np.average(self.points, axis=1)]
 
         self.can_attach_piece = self.type != SideType.FLAT
-        self.position = None
+        self.position = position
 
     def attach_piece(self):
         self.can_attach_piece = False

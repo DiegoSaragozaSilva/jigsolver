@@ -7,7 +7,7 @@ from board_viwer import JigsawPuzzleBoardViewer
 
 def main():
     # Show the original image
-    jigsaw_image = cv2.imread("jigsaw-samples/sample_4.png")
+    jigsaw_image = cv2.imread("jigsaw-samples/sample_6.png")
 
     preprocessor = Preprocessor(debug_mode=False)
     processed_jigsaw_image = preprocessor.process(jigsaw_image)

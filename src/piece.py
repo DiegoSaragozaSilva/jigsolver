@@ -8,7 +8,7 @@ from itertools import combinations
 from matplotlib import pyplot as plt
 
 from side import Side
-from utils import SideType, PieceType
+from utils import SideType, PieceType, SidePosition
 
 
 class Piece:
@@ -80,7 +80,7 @@ class Piece:
 
         candidates = []
         delta_distances = []
-        distance_threshold = 200
+        distance_threshold = 60
         for combination in combinations(points, 4):
             if not polygon_distance_threshold(combination, distance_threshold):
                 continue
@@ -112,16 +112,16 @@ class Piece:
             candidates.append(combination)
             delta_distances.append(delta)
 
-        # figure = plt.figure(figsize=(12, 4))
-        # figure.add_subplot(3, 3, 1)
-        # plt.imshow(self.image)
-        # figure.add_subplot(3, 3, 2)
-        # plt.imshow(image_harris)
-        # figure.add_subplot(3, 3, 3)
-        # plt.imshow(corners_maxima)
-        # figure.add_subplot(3, 3, 4)
-        # plt.imshow(self.image)
-        # plt.scatter(points_x, points_y)
+        figure = plt.figure(figsize=(12, 4))
+        figure.add_subplot(3, 3, 1)
+        plt.imshow(self.image)
+        figure.add_subplot(3, 3, 2)
+        plt.imshow(image_harris)
+        figure.add_subplot(3, 3, 3)
+        plt.imshow(corners_maxima)
+        figure.add_subplot(3, 3, 4)
+        plt.imshow(self.image)
+        plt.scatter(points_x, points_y)
 
         print(f"Found candidates {len(candidates)}")
         if len(candidates) <= 0:
@@ -135,9 +135,9 @@ class Piece:
         best_xs = [point[0] for point in best_candidate]
         best_ys = [point[1] for point in best_candidate]
 
-        # figure.add_subplot(3, 3, 5)
-        # plt.imshow(self.image)
-        # plt.scatter(best_xs, best_ys)
+        figure.add_subplot(3, 3, 5)
+        plt.imshow(self.image)
+        plt.scatter(best_xs, best_ys)
 
         # Refine detected corners
         refinement_size = 20
@@ -165,9 +165,9 @@ class Piece:
         refined_xs = [point[0] for point in refined_corners]
         refined_ys = [point[1] for point in refined_corners]
 
-        # figure.add_subplot(3, 3, 6)
-        # plt.imshow(self.image)
-        # plt.scatter(refined_xs, refined_ys)
+        figure.add_subplot(3, 3, 6)
+        plt.imshow(self.image)
+        plt.scatter(refined_xs, refined_ys)
 
         # Separate the four sides of the piece
         side_lines = [
@@ -215,6 +215,7 @@ class Piece:
             )
         cv2.circle(image_lines, self.center, 3, (255, 0, 0), -1)
 
+        side_index = 0
         num_flats = 0
         patch_size = 5
         for side in side_points:
@@ -236,22 +237,38 @@ class Piece:
                 bounding_box[0] : bounding_box[0] + bounding_box[2],
             ]
 
+            side_position = SidePosition.RIGHT
+            if side_index == 1:
+                side_position = SidePosition.TOP
+            elif side_index == 2:
+                side_position = SidePosition.LEFT
+            elif side_index == 3:
+                side_position = SidePosition.BOTTOM
+
             if non_zero == 2 * patch_size * 2 * patch_size:
-                self.sides.append(Side(points, SideType.HEAD, side_image_trimmed))
+                self.sides.append(
+                    Side(points, SideType.HEAD, side_image_trimmed, side_position)
+                )
                 print(f"HEAD (R) {non_zero}")
                 cv2.circle(image_lines, average_point, 3, (255, 0, 0), -1)
             elif non_zero == 0:
-                self.sides.append(Side(points, SideType.HOLE, side_image_trimmed))
+                self.sides.append(
+                    Side(points, SideType.HOLE, side_image_trimmed, side_position)
+                )
                 print(f"HOLE (G) {non_zero}")
                 cv2.circle(image_lines, average_point, 3, (0, 255, 0), -1)
             else:
-                self.sides.append(Side(points, SideType.FLAT, side_image_trimmed))
+                self.sides.append(
+                    Side(points, SideType.FLAT, side_image_trimmed, side_position)
+                )
                 num_flats += 1
                 print(f"FLAT (B) {non_zero}")
                 cv2.circle(image_lines, average_point, 3, (0, 0, 255), -1)
 
-        # figure.add_subplot(3, 3, 7)
-        # plt.imshow(image_lines)
+            side_index += 1
+
+        figure.add_subplot(3, 3, 7)
+        plt.imshow(image_lines)
 
         if num_flats == 2:
             self.type = PieceType.CORNER
@@ -260,6 +277,14 @@ class Piece:
         else:
             self.type = PieceType.CENTER
         plt.show()
+
+    def rotate_clockwise(self):
+        # Rotate the pieces sides
+        self.sides[0].set_position(SidePosition.turn_clockwise(self.sides[0].position))
+        self.sides[1].set_position(SidePosition.turn_clockwise(self.sides[1].position))
+        self.sides[2].set_position(SidePosition.turn_clockwise(self.sides[2].position))
+        self.sides[3].set_position(SidePosition.turn_clockwise(self.sides[3].position))
+        self.sides = np.roll(self.sides, -1)
 
     def visualize(self):
         stack_image = np.vstack(
