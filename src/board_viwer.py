@@ -66,7 +66,7 @@ class JigsawPuzzleBoardViewer:
     def rotate_piece_to_top(self, piece):
         top_side_center = next(
             side.center for side in piece.sides if side.position == SidePosition.TOP
-        )[0]
+        )
 
         piece_center = piece.center
 

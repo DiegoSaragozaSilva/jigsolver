@@ -4,6 +4,7 @@ import imutils
 
 from matplotlib import pyplot as plt
 from skimage.metrics import structural_similarity
+import math
 
 
 from side import Side
@@ -141,16 +142,53 @@ class Jigsaw:
         return board, pieces_to_place
 
     def _get_matching_coefficient(self, side_1: Side, side_2: Side) -> float:
+        def line_slope(x1, y1, x2, y2):
+            return (y2 - y1) / (x2 - x1)
+        
+        def lines_angle(m1, m2):
+            return math.degrees(math.atan((m2 - m1) / (1 + (m2 * m1))))
+        
+        def rotate_point(o, p, angle):
+            a = math.radians(angle)
+            ox, oy = o
+            px, py = p[0]
+
+            qx = ox + math.cos(a) * (px - ox) - math.sin(a) * (py - oy)
+            qy = oy + math.sin(a) * (px - ox) + math.cos(a) * (py - oy)
+            return qx, qy            
+
         # Ensure the points are in the correct shape for OpenCV
         contour1 = side_1.points.reshape((-1, 1, 2)).astype(np.int32)
         contour2 = side_2.points.reshape((-1, 1, 2)).astype(np.int32)
+
+        # Create two line segments going from the start and end points of the contours
+        contour_line_1 = [contour1[0][0], contour1[-1][0]]
+        contour_line_2 = [contour2[0][0], contour2[-1][0]]
+
+        # Find the angle between the two segments
+        slope_1 = line_slope(contour_line_1[0][0], contour_line_1[0][1], contour_line_1[1][0], contour_line_1[1][1])
+        slope_2 = line_slope(contour_line_2[0][0], contour_line_2[0][1], contour_line_2[1][0], contour_line_2[1][1])
+        angle = lines_angle(slope_1, slope_2)
+
+        # Align the two contours rotating by the angle between the segments and calculate the coefficient
+        contour_1_rotated = np.array([rotate_point(side_1.center, p, angle) for p in contour1])
+        contour_2_rotated = np.array([rotate_point(side_2.center, p, angle) for p in contour2])
+        base_rotation_coefficient = cv2.matchShapes(contour_1_rotated, contour_2_rotated, cv2.CONTOURS_MATCH_I1, 0.0)
+
+        # Also calculate for the (180 - angle) rotation
+        contour_1_rotated = np.array([rotate_point(side_1.center, p, 180 - angle) for p in contour1])
+        contour_2_rotated = np.array([rotate_point(side_2.center, p, 180 - angle) for p in contour2])
+        inverse_rotation_coefficient = cv2.matchShapes(contour_1_rotated, contour_2_rotated, cv2.CONTOURS_MATCH_I1, 0.0)
+
+        # Get the best coefficient
+        matching_coefficient = min(base_rotation_coefficient, inverse_rotation_coefficient)
 
         # Calculate the match shape value using cv2.matchShapes
         # matching_coefficient = cv2.matchShapes(
         #     contour1, contour2, cv2.CONTOURS_MATCH_I1, 0.0
         # )
 
-        length_coefficient = abs(side_1.length - side_2.length)
+        # length_coefficient = abs(side_1.length - side_2.length)
 
         # side_image_trimmed_1 = cv2.cvtColor(
         #     side_1.side_image_trimmed, cv2.COLOR_BGR2GRAY
@@ -173,7 +211,7 @@ class Jigsaw:
         # mean_color_diff = np.absolute(trim_mean_color_1 - trim_mean_color_2)
         # color_coefficient = 0.299 * mean_color_diff[2] + 0.587 * mean_color_diff[1] + 0.114 * mean_color_diff[0]
 
-        matching_coefficient = length_coefficient # np.clip(length_coefficient - color_coefficient, 0, np.inf)
+        #matching_coefficient = np.clip(length_coefficient - color_coefficient, 0, np.inf)
 
         if self.debug_mode:
             # Determine the size of the canvas

@@ -18,7 +18,7 @@ class Side:
         self.type = type
         self.side_image_trimmed = side_image_trimmed
 
-        self.center = [np.average(self.points, axis=0), np.average(self.points, axis=1)]
+        self.center = [sum(x) / len(x) for x in zip(*points)]
 
         self.can_attach_piece = self.type != SideType.FLAT
         self.position = position
