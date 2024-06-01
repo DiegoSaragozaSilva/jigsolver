@@ -11,6 +11,7 @@ class JigsawPuzzleBoardViewer:
         self.board = board
         self.debug_mode = debug_mode
         self.calculate_canvas_size()
+        self.build_canvas()
 
     def calculate_canvas_size(self):
         total_height = sum(
@@ -21,9 +22,9 @@ class JigsawPuzzleBoardViewer:
         )
         self.canvas = np.zeros((total_height + 25, total_width + 25, 3), dtype=np.uint8)
 
-    def display_board(self):
+    def build_canvas(self):
         current_y = 0
-        for index, row in enumerate(self.board):
+        for _, row in enumerate(self.board):
             max_row_height = max(piece.original_image.shape[0] for piece in row)
             current_x = 0
             for piece in row:
@@ -45,7 +46,6 @@ class JigsawPuzzleBoardViewer:
                         2,
                     )
                     cv2.imshow("Piece Original", piece.original_image)
-
                     cv2.imshow("Piece Rotated", rotated_image)
 
                     # Wait for esc key to close the windows
@@ -59,6 +59,7 @@ class JigsawPuzzleBoardViewer:
                 current_x += rotated_image.shape[1]
             current_y += max_row_height
 
+    def display_board(self):
         cv2.imshow("Jigsaw Puzzle Board", self.canvas)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
