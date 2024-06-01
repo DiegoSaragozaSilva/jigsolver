@@ -1,9 +1,10 @@
 import io
 import numpy as np
 
+from PIL import Image
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import StreamingResponse
-from PIL import Image
+from fastapi.middleware.cors import CORSMiddleware
 
 from jigsaw import Jigsaw
 from preprocessor import Preprocessor
@@ -13,6 +14,17 @@ app = FastAPI(
     title="Jigsaw Puzzle Solver",
     description="A Jigsaw Puzzle Solver using OpenCV and Python",
     version="0.1",
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000"
+    ],  # Allows all origins, or specify a list of origins you want to allow
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
 )
 
 

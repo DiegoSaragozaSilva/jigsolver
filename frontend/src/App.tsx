@@ -3,6 +3,8 @@ import { ThemeProvider } from "@mui/material/styles";
 import { ReactNotifications, Store } from "react-notifications-component";
 import "react-notifications-component/dist/theme.css";
 
+import { sendImage } from "./clients/backendClient";
+
 import draculaTheme from "./theme";
 import Header from "./components/Header";
 import PageWrapper from "./components/PageWrapper";
@@ -11,10 +13,16 @@ import DragAndDropUpload from "./components/DragAndDropUpload";
 import ImagePreview from "./components/ImagePreview";
 import SendButton from "./components/SendButton";
 import Loading from "./components/Loading";
+import ImagePopup from "./components/ImagePopup";
 
 const App: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [imageUrl, setImageUrl] = useState<string>("");
+
+  const onClosePopup = useCallback(() => {
+    setImageUrl("");
+  }, []);
 
   const addNotification = useCallback(
     (title: string, message: string, type: "danger" | "success") => {
@@ -58,9 +66,18 @@ const App: React.FC = () => {
   const onSend = useCallback(() => {
     setLoading(true);
     setTimeout(() => {
-      console.log(file);
-      setLoading(false); // Reset loading after the operation (for demo purposes)
-    }, 2000);
+      sendImage(file!)
+        .then((receivedImageUrl) => {
+          setImageUrl(receivedImageUrl); // Set the image URL for the popup
+          addNotification("Success!", "Image sent successfully", "success");
+        })
+        .catch((error) => {
+          addNotification("Error!", error.message, "danger");
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }, 5000);
   }, [file]);
 
   return (
@@ -79,6 +96,7 @@ const App: React.FC = () => {
           )}
           {!loading && file && <SendButton onSend={onSend} file={file} />}
         </PageWrapper>
+        {imageUrl && <ImagePopup imageUrl={imageUrl} onClose={onClosePopup} />}
       </ThemeProvider>
     </div>
   );
