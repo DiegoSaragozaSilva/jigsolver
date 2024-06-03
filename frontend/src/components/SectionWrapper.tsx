@@ -5,12 +5,16 @@ interface SectionWrapperProps {
   children: ReactNode;
   flexDirection?: "column" | "row";
   alignItems?: "center" | "flex-start" | "flex-end";
+  marginTop?: string;
+  gap?: string;
 }
 
 const SectionWrapper: React.FC<SectionWrapperProps> = ({
   children,
   flexDirection = "column",
   alignItems = "center",
+  marginTop = "0%",
+  gap = "0%",
 }) => {
   const theme = useTheme();
 
@@ -24,6 +28,8 @@ const SectionWrapper: React.FC<SectionWrapperProps> = ({
         width: "100%",
         height: "100%",
         color: theme.palette.text.secondary,
+        marginTop: marginTop,
+        gap: gap,
       }}
     >
       {children}

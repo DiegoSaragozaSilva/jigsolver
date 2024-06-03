@@ -12,17 +12,13 @@ from utils import SideType, PieceType, SidePosition
 
 
 class Piece:
-    image = None
-    original_image = None
-    contour = None
-    corners = None
-    center = None
-    sides = None
-    type = None
 
-    def __init__(self, image, original_image, contour):
+    def __init__(self, image, original_image, contour, distance_threshold):
         self.image = image
         self.original_image = original_image
+        self.distance_threshold = distance_threshold
+
+        self.final_image = None
         self.contour = contour
         self.sides: list[Side] = []
 
@@ -82,14 +78,11 @@ class Piece:
             ndimage.center_of_mass(image_corners, labeled, range(1, num_objects + 1))
         )
         points = [list(reversed(point)) for point in points]
-        points_x = [point[0] for point in points]
-        points_y = [point[1] for point in points]
 
         candidates = []
         delta_distances = []
-        distance_threshold = 115
         for combination in combinations(points, 4):
-            if not polygon_distance_threshold(combination, distance_threshold):
+            if not polygon_distance_threshold(combination, self.distance_threshold):
                 continue
 
             combination = list(sorted(combination, key=clockwise_distance))
@@ -134,17 +127,8 @@ class Piece:
         if len(candidates) <= 0:
             return 0
 
-        # sorted_candidates = sorted(candidates, key=polygon_area)
-        # best_candidate = list(sorted_candidates[0])
         best_candidate_index = np.argmin(delta_distances)
         best_candidate = candidates[best_candidate_index]
-
-        best_xs = [point[0] for point in best_candidate]
-        best_ys = [point[1] for point in best_candidate]
-
-        # figure.add_subplot(3, 3, 5)
-        # plt.imshow(self.image)
-        # plt.scatter(best_xs, best_ys)
 
         # Refine detected corners
         refinement_size = 20

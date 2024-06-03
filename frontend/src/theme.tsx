@@ -21,6 +21,11 @@ const draculaTheme = createTheme({
       secondary: "#6272a4", // grey blue
     },
   },
+
+  typography: {
+    fontFamily: "Roboto, sans-serif",
+    fontSize: 16,
+  },
 });
 
 export default draculaTheme;

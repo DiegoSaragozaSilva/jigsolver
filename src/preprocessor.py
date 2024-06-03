@@ -5,8 +5,6 @@ import imutils
 
 
 class Preprocessor:
-    debug_mode = None
-
     def __init__(self, debug_mode=False):
         self.debug_mode = debug_mode
 
@@ -50,15 +48,11 @@ class Preprocessor:
         lowest_area_index = 0
         lowest_area = np.inf
         for i in range(num_markers):
-            if stats[i, cv2.CC_STAT_AREA] < lowest_area and (stats[i, cv2.CC_STAT_LEFT] == 0 and stats[i, cv2.CC_STAT_TOP] == 0):
+            if stats[i, cv2.CC_STAT_AREA] < lowest_area and (
+                stats[i, cv2.CC_STAT_LEFT] == 0 and stats[i, cv2.CC_STAT_TOP] == 0
+            ):
                 lowest_area = stats[i, cv2.CC_STAT_AREA]
                 lowest_area_index = i
-            # print(f"MARKER {i}")
-            # print(f"- X Y W H ({stats[i, cv2.CC_STAT_LEFT]}, {stats[i, cv2.CC_STAT_TOP]}, {stats[i, cv2.CC_STAT_WIDTH]}, {stats[i, cv2.CC_STAT_HEIGHT]})")
-            # print(f"- AREA {stats[i, cv2.CC_STAT_AREA]}")
-            # print(f"- CENTER ({centroids[i][0]}, {centroids[i][1]})")
-            # plt.imshow((markers == i).astype("uint8") * 255)
-            # plt.show()
 
         image_watershed[markers == lowest_area_index] = [0, 0, 255]
 

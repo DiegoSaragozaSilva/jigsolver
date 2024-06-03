@@ -1,10 +1,12 @@
 import io
+import cv2
 import numpy as np
 
 from PIL import Image
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Query
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+
 
 from jigsaw import Jigsaw
 from preprocessor import Preprocessor
@@ -29,10 +31,12 @@ app.add_middleware(
 
 
 @app.post("/solve-jigsaw/")
-async def solve_jigsaw_endpoint(file: UploadFile = File(...)):
+async def solve_jigsaw_endpoint(
+    file: UploadFile = File(...), distance_threshold: int = Query(150)
+):
     # Read the image file
-    image_data = await file.read()
-    jigsaw_image = np.array(Image.open(io.BytesIO(image_data)))
+    image_data = np.frombuffer(await file.read(), np.uint8)
+    jigsaw_image = cv2.imdecode(image_data, cv2.IMREAD_COLOR)
 
     # Read numpy array image with OpenCV
     preprocessor = Preprocessor(debug_mode=False)
@@ -41,7 +45,12 @@ async def solve_jigsaw_endpoint(file: UploadFile = File(...)):
     processed_jigsaw_image = preprocessor.process(jigsaw_image)
 
     # Solve the jigsaw
-    jigsaw = Jigsaw(jigsaw_image, processed_jigsaw_image, debug_mode=False)
+    jigsaw = Jigsaw(
+        original_image=jigsaw_image,
+        processed_image=processed_jigsaw_image,
+        distance_threshold=distance_threshold,
+        debug_mode=False,
+    )
     solved_jigsaw = jigsaw.solve()
 
     # Get the solved image

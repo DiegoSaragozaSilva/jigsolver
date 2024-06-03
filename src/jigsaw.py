@@ -12,7 +12,9 @@ from utils import SidePosition, SideType, PieceType
 
 
 class Jigsaw:
-    def __init__(self, original_image, processed_image, debug_mode=False):
+    def __init__(
+        self, original_image, processed_image, distance_threshold, debug_mode=False
+    ):
         self.processed_image = processed_image
         self.pieces: list[Piece] = []
         self.debug_mode = debug_mode
@@ -79,7 +81,12 @@ class Jigsaw:
                 value=[0, 0, 0],
             )
 
-            piece = Piece(final_piece_image, original_piece_image, piece_contour)
+            piece = Piece(
+                final_piece_image,
+                original_piece_image,
+                piece_contour,
+                distance_threshold,
+            )
             self.pieces.append(piece)
 
         for piece in self.pieces:
@@ -241,29 +248,6 @@ class Jigsaw:
 
         return matching_coefficient
 
-    def _set_first_corner_piece_positions(self, corner_piece: Piece) -> Piece:
-        # Find the flat sides of the corner piece
-        flat_sides = [
-            index
-            for index, side in enumerate(corner_piece.sides)
-            if side.type == SideType.FLAT
-        ]
-
-        # Assign positions to the flat sides and their opposite sides
-        corner_piece.sides[flat_sides[0]].set_position(SidePosition.LEFT)
-        corner_piece.sides[(flat_sides[0] + 2) % 4].set_position(SidePosition.RIGHT)
-
-        if flat_sides[1] == (flat_sides[0] + 1) % 4:
-            corner_piece.sides[flat_sides[1]].set_position(SidePosition.BOTTOM)
-            corner_piece.sides[(flat_sides[1] + 2) % 4].set_position(SidePosition.TOP)
-        else:
-            corner_piece.sides[flat_sides[1]].set_position(SidePosition.TOP)
-            corner_piece.sides[(flat_sides[1] + 2) % 4].set_position(
-                SidePosition.BOTTOM
-            )
-
-        return corner_piece
-
     def _place_first_corner(self):
         # Find and remove the first corner piece from the pieces to place
         corner_piece = next(
@@ -271,10 +255,19 @@ class Jigsaw:
         )
         self.pieces_to_place.remove(corner_piece)
 
+        # Rotate piece until index 1 is TOP and index 2 is LEFT
+        max_rotations = 3
+        while not (
+            corner_piece.sides[SidePosition.TOP.value].type == SideType.FLAT
+            and corner_piece.sides[SidePosition.LEFT.value].type == SideType.FLAT
+        ):
+            corner_piece.rotate_clockwise()
+            max_rotations -= 1
+            if max_rotations == 0:
+                raise Exception("Corner piece is not in the correct orientation")
+
         # Place the corner piece at the top-left corner of the board
-        self.board[0][0] = self._set_first_corner_piece_positions(
-            corner_piece=corner_piece
-        )
+        self.board[0][0] = corner_piece
 
     def _set_border_piece_positions(
         self,
@@ -530,10 +523,12 @@ class Jigsaw:
         place_border_for_positions(right_positions, SidePosition.BOTTOM, -1, 0)
         place_border_for_positions(bottom_positions, SidePosition.LEFT, 0, 1)
         place_border_for_positions(left_positions, SidePosition.TOP, 1, 0)
-        pass
 
     def _find_center_candidates(
-        self, next_side_type_left: SideType, next_side_type_top: SideType
+        self,
+        next_side_type_left: SideType,
+        next_side_type_top: SideType,
+        next_side_type_right: SideType | None,
     ) -> list[Piece]:
         candidates = []
 
@@ -541,16 +536,25 @@ class Jigsaw:
             max_rotations = 3
 
             while max_rotations > 0:
-                left_side = next(
-                    side for side in piece.sides if side.position == SidePosition.LEFT
-                )
-                top_side = next(
-                    side for side in piece.sides if side.position == SidePosition.TOP
-                )
+                left_side = piece.sides[SidePosition.LEFT.value]
+                top_side = piece.sides[SidePosition.TOP.value]
+                right_side = piece.sides[SidePosition.RIGHT.value]
+
                 if (
-                    left_side.type == next_side_type_left and left_side.can_attach_piece
-                ) and (
-                    top_side.type == next_side_type_top and top_side.can_attach_piece
+                    (
+                        left_side.type == next_side_type_left
+                        and left_side.can_attach_piece
+                    )
+                    and (
+                        top_side.type == next_side_type_top
+                        and top_side.can_attach_piece
+                    )
+                    and (
+                        right_side.type == next_side_type_right
+                        and right_side.can_attach_piece
+                        if next_side_type_right is not None
+                        else True
+                    )
                 ):
                     candidates.append(piece)
                     max_rotations = 0
@@ -572,22 +576,74 @@ class Jigsaw:
             if self._is_position_filled(pos=pos):
                 continue
 
+            # Get piece attached to the left side
             left_side_piece = self.board[pos[0]][pos[1] - 1]
-            left_side_piece_attached_side = next(
-                side
-                for side in left_side_piece.sides
-                if side.position == SidePosition.RIGHT
-            )
+            left_side_piece_attached_side = left_side_piece.sides[
+                SidePosition.RIGHT.value
+            ]
+            self.board[pos[0]][pos[1] - 1].sides[2].attach_piece()
+
+            # Get piece attached to the top side
             top_side_piece = self.board[pos[0] - 1][pos[1]]
-            top_side_piece_attached_side = next(
-                side
-                for side in top_side_piece.sides
-                if side.position == SidePosition.BOTTOM
+            top_side_piece_attached_side = top_side_piece.sides[
+                SidePosition.BOTTOM.value
+            ]
+            self.board[pos[0] - 1][pos[1]].sides[1].attach_piece()
+
+            # Get piece to attach on the right side (can be None)
+            right_side_piece = self.board[pos[0]][pos[1] + 1]
+            right_side_piece_attached_side = (
+                right_side_piece.sides[SidePosition.LEFT.value]
+                if right_side_piece is not None
+                else None
             )
+
+            # Find the best match for the center piece
             candidates = self._find_center_candidates(
                 next_side_type_left=SideType.opposite(
                     left_side_piece_attached_side.type
                 ),
                 next_side_type_top=SideType.opposite(top_side_piece_attached_side.type),
+                next_side_type_right=(
+                    SideType.opposite(right_side_piece_attached_side.type)
+                    if right_side_piece_attached_side is not None
+                    else None
+                ),
             )
-            pass
+
+            best_match = None
+            best_coefficient = float("inf")
+
+            for piece in candidates:
+                left_side = piece.sides[SidePosition.LEFT.value]
+                top_side = piece.sides[SidePosition.TOP.value]
+                right_side = piece.sides[SidePosition.RIGHT.value]
+                coefficient_left = self._get_matching_coefficient(
+                    side_1=left_side_piece_attached_side, side_2=left_side
+                )
+                coefficient_top = self._get_matching_coefficient(
+                    side_1=top_side_piece_attached_side, side_2=top_side
+                )
+                coefficient_right = (
+                    0
+                    if right_side_piece is None
+                    else self._get_matching_coefficient(
+                        side_1=right_side_piece_attached_side, side_2=right_side
+                    )
+                )
+                final_coefficient = (
+                    coefficient_left + coefficient_top + coefficient_right
+                )
+                if final_coefficient < best_coefficient:
+                    best_match = piece
+                    best_coefficient = final_coefficient
+
+            # Remove the best match from pieces_to_place
+            self.pieces_to_place.remove(best_match)
+
+            best_match.sides[SidePosition.LEFT.value].attach_piece()
+            best_match.sides[SidePosition.TOP.value].attach_piece()
+            if right_side_piece is not None:
+                best_match.sides[SidePosition.RIGHT.value].attach_piece()
+
+            self.board[pos[0]][pos[1]] = best_match

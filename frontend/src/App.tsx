@@ -14,11 +14,13 @@ import ImagePreview from "./components/ImagePreview";
 import SendButton from "./components/SendButton";
 import Loading from "./components/Loading";
 import ImagePopup from "./components/ImagePopup";
+import SliderControl from "./components/SliderControl";
 
 const App: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [imageUrl, setImageUrl] = useState<string>("");
+  const [distanceThreshold, setDistanceThreshold] = useState<number>(150); // State for the distance threshold
 
   const onClosePopup = useCallback(() => {
     setImageUrl("");
@@ -66,19 +68,23 @@ const App: React.FC = () => {
   const onSend = useCallback(() => {
     setLoading(true);
     setTimeout(() => {
-      sendImage(file!)
+      sendImage(file!, distanceThreshold) // Updated to include distanceThreshold
         .then((receivedImageUrl) => {
-          setImageUrl(receivedImageUrl); // Set the image URL for the popup
+          setImageUrl(receivedImageUrl);
           addNotification("Success!", "Image sent successfully", "success");
         })
         .catch((error) => {
-          addNotification("Error!", error.message, "danger");
+          addNotification(
+            "Error!",
+            "Try to configure another distance threshold",
+            "danger"
+          );
         })
         .finally(() => {
           setLoading(false);
         });
     }, 5000);
-  }, [file]);
+  }, [file, distanceThreshold]); // Include distanceThreshold in dependency array
 
   return (
     <div>
@@ -94,7 +100,21 @@ const App: React.FC = () => {
               {file && <ImagePreview file={file} />}
             </SectionWrapper>
           )}
-          {!loading && file && <SendButton onSend={onSend} file={file} />}
+          {!loading && file && (
+            <SectionWrapper
+              flexDirection="column"
+              alignItems="center"
+              marginTop="-10%"
+              gap="5%"
+            >
+              <SliderControl
+                label="Insert the approximate size of the piece in pixels"
+                value={distanceThreshold}
+                onChange={setDistanceThreshold}
+              />
+              <SendButton onSend={onSend} file={file} />
+            </SectionWrapper>
+          )}
         </PageWrapper>
         {imageUrl && <ImagePopup imageUrl={imageUrl} onClose={onClosePopup} />}
       </ThemeProvider>

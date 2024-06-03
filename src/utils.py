@@ -21,10 +21,10 @@ class SideType(Enum):
 
 
 class SidePosition(Enum):
-    TOP = 0
-    RIGHT = 1
-    BOTTOM = 2
-    LEFT = 3
+    RIGHT = 0
+    TOP = 1
+    LEFT = 2
+    BOTTOM = 3
 
     # Get the opposite side position
     def opposite(self):
