@@ -34,3 +34,10 @@ Run the development server:
 ```bash
 npm start
 ```
+
+### Next Steps
+
+* Upgrade the preprocessing stage to give more reliable results for the pieces segmentation;
+* Upgrade the solving algorithm to give better results when solving edges and center pieces;
+* Add a deskewing and dewarping algorithm to accept a more variety of images;
+* Add a fontend feature to be able to move and select individual pieces and have a more intuitive solving process;
