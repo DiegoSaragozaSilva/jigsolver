@@ -14,6 +14,9 @@ COPY requirements.txt /app/requirements.txt
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install OpenCV dependencies
+RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
+
 # Copy the source code folder into the container
 COPY src /app
 
