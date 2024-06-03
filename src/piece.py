@@ -87,7 +87,7 @@ class Piece:
 
         candidates = []
         delta_distances = []
-        distance_threshold = 175
+        distance_threshold = 115
         for combination in combinations(points, 4):
             if not polygon_distance_threshold(combination, distance_threshold):
                 continue

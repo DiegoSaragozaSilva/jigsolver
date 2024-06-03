@@ -50,7 +50,7 @@ class Preprocessor:
         lowest_area_index = 0
         lowest_area = np.inf
         for i in range(num_markers):
-            if stats[i, cv2.CC_STAT_AREA] < lowest_area:
+            if stats[i, cv2.CC_STAT_AREA] < lowest_area and (stats[i, cv2.CC_STAT_LEFT] == 0 and stats[i, cv2.CC_STAT_TOP] == 0):
                 lowest_area = stats[i, cv2.CC_STAT_AREA]
                 lowest_area_index = i
             # print(f"MARKER {i}")
