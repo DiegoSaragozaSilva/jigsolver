@@ -12,7 +12,7 @@ def main():
     preprocessor = Preprocessor(debug_mode=False)
     processed_jigsaw_image = preprocessor.process(jigsaw_image)
 
-    jigsaw = Jigsaw(jigsaw_image, processed_jigsaw_image, debug_mode=True)
+    jigsaw = Jigsaw(jigsaw_image, processed_jigsaw_image, debug_mode=False)
 
     # jigsaw.visualize()
     # for piece in jigsaw.pieces:
